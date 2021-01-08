@@ -85,7 +85,6 @@ def generate_food(width, height, map, snake_block, snake_list=[]):
 
 
 # Drawing the gray block
-
 def our_block(block, snake_list):
     for x in snake_list:
         pygame.draw.rect(dis, gray, [x[0], x[1], block, block])
@@ -175,13 +174,13 @@ def gameLoop():
             y1 += y1_change
 
             dis.fill(blue)
-            pygame, green, [foodx, foody, block, block])
+            pygame.draw.rect(dis, green, [foodx, foody, block, block])
             snake_Head = []
             snake_Head.append(x1)
             snake_Head.append(y1)
             snake_List.append(snake_Head)
             if len(snake_List) > Length_of_snake:
-                del snake_List[0].draw.rect(dis
+                del snake_List[0]
 
             our_block(block, snake_List)
             draw_map(map, block)
