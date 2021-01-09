@@ -2,6 +2,7 @@ import pygame
 import random
 import heapq as pq
 import heapq
+import math
 
 pygame.init()
 
@@ -17,7 +18,7 @@ dis_width = 600
 dis_height = 400
 
 dis = pygame.display.set_mode((dis_width, dis_height))
-pygame.display.set_caption('A* Algorithm')
+pygame.display.set_caption('A* Algorithm + kinematics')
 
 block = 10
 snake_List = list([])
@@ -51,12 +52,12 @@ def empty_map(width=60, height=40):
             row.append(0)
         grid.append(row)
     # example of an obstacle
-    for i in range(10, 30):
+    for i in range(10, 20):
         grid[i][12] = 100
-        grid[i][22] = 100
-        grid[i][32] = 100
-        grid[i][42] = 100
-        grid[i][52] = 100
+        # grid[i][22] = 100
+        # grid[i][32] = 100
+        # grid[i][42] = 100
+        # grid[i][52] = 100
     return grid
 
 
@@ -89,6 +90,11 @@ def our_block(block, snake_list):
     for x in snake_list:
         pygame.draw.rect(dis, gray, [x[0], x[1], block, block])
 
+
+def unicycle(x, y, theta, L, R):
+    pygame.draw.polygon(dis, red, ((int(x - math.cos(theta) * R), int(y + math.sin(theta) * R)),
+                                   (int(x - 0.5 * L * math.sin(theta)), int(y - 0.5 * L * math.cos(theta))),
+                                   (int(x + 0.5 * L * math.sin(theta)), int(y + 0.5 * L * math.cos(theta)))), width=0)
 
 def heuristics(st, end):
     # (x0, y0) -> start
@@ -142,7 +148,6 @@ def find_path_a_star(start, end):
                     fscore[neigh] = cost + heuristics(neigh, end)
                     pq.heappush(oheap, (fscore[neigh], neigh))
 
-
     path = []
     while current in came_from:
         path.append(current)
@@ -157,6 +162,10 @@ def gameLoop():
 
     x1 = dis_width / 2
     y1 = dis_height / 2
+    theta = 0
+    R = 20
+    L = 15
+
 
     start = (x1, y1)
     foodx, foody = generate_food(dis_width, dis_height, map, block, snake_List)
@@ -183,6 +192,9 @@ def gameLoop():
                 del snake_List[0]
 
             our_block(block, snake_List)
+            theta = theta + math.pi/6
+            unicycle(x1, y1, theta, L, R)
+            print('x1: ', x1, 'y1: ', y1)
             draw_map(map, block)
             pygame.time.Clock().tick(1)
             pygame.display.update()
