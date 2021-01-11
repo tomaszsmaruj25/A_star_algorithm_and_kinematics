@@ -20,10 +20,10 @@ dis_height = 400
 dis = pygame.display.set_mode((dis_width, dis_height))
 pygame.display.set_caption('A* Algorithm + kinematics')
 
-block = 10
-snake_List = list([])
-Length_of_snake = 1
-game_over = False
+block = 10  # dimension of the A* square path
+L = 15  # vehicle dimension - between the wheels
+R = 20  # vehicle dimension - radian of the wheels
+game_over = False  # end simulation condition
 
 
 # # Initializing empty map
@@ -37,7 +37,7 @@ game_over = False
 #     return grid
 
 
-# Initializing empty map
+# Initializing map with obstacles
 def empty_map(width=60, height=40):
     grid = []
     for r in range(height):
@@ -54,10 +54,10 @@ def empty_map(width=60, height=40):
     # example of an obstacle
     for i in range(10, 20):
         grid[i][12] = 100
-        # grid[i][22] = 100
-        # grid[i][32] = 100
-        # grid[i][42] = 100
-        # grid[i][52] = 100
+        grid[i][22] = 100
+        grid[i][32] = 100
+        grid[i][42] = 100
+        grid[i][52] = 100
     return grid
 
 
@@ -72,29 +72,26 @@ def draw_map(map, block):
                 pygame.draw.rect(dis, black, [idxC * block, idxR * block, block, block])
 
 
-def generate_food(width, height, map, snake_block, snake_list=[]):
+def generate_food(width, height, map, snake_block):
     foodValid = False
     while not foodValid:
         food_x = round(random.randrange(0, width - snake_block) / snake_block) * snake_block
         food_y = round(random.randrange(0, height - snake_block) / snake_block) * snake_block
         if map[int(food_y / snake_block)][int(food_x / snake_block)] == 0:  # Prevent getting food on the obstacle
-            if [food_x, food_y] in snake_list:
-                foodValid = False  # Prevent getting food on  snake body
-                continue
-
             return food_x, food_y
 
 
-# Drawing the gray block
-def our_block(block, snake_list):
-    for x in snake_list:
-        pygame.draw.rect(dis, gray, [x[0], x[1], block, block])
+def unicycle(x, y, theta):
+    # where (x,y) is the point is between the wheels
+    theta_rad = math.radians(theta)  # convert theta in degrees to radians
+    # find characteristic points
+    left_wheel = (int(x - 0.5 * L * math.sin(theta_rad)), int(y - 0.5 * L * math.cos(theta_rad)))
+    right_wheel = (int(x + 0.5 * L * math.sin(theta_rad)), int(y + 0.5 * L * math.cos(theta_rad)))
+    z_point = (int(x - math.cos(theta_rad) * R), int(y + math.sin(theta_rad) * R))
+    # draw the vehicle
+    pygame.draw.polygon(dis, red, (z_point, left_wheel, right_wheel), width=0)
+    return z_point
 
-
-def unicycle(x, y, theta, L, R):
-    pygame.draw.polygon(dis, red, ((int(x - math.cos(theta) * R), int(y + math.sin(theta) * R)),
-                                   (int(x - 0.5 * L * math.sin(theta)), int(y - 0.5 * L * math.cos(theta))),
-                                   (int(x + 0.5 * L * math.sin(theta)), int(y + 0.5 * L * math.cos(theta)))), width=0)
 
 def heuristics(st, end):
     # (x0, y0) -> start
@@ -160,15 +157,20 @@ def find_path_a_star(start, end):
 def gameLoop():
     global game_over
 
-    x1 = dis_width / 2
-    y1 = dis_height / 2
-    theta = 0
-    R = 20
-    L = 15
+    # starting position of the robot
+    xp = 305
+    yp = 205
+    theta = 90
 
+    # position of the first square  a* algorithm
+    # x1 = dis_width / 2
+    # y1 = dis_height / 2
+    x1 = xp - 5
+    y1 = yp - 5
 
+    # position of the end point
     start = (x1, y1)
-    foodx, foody = generate_food(dis_width, dis_height, map, block, snake_List)
+    foodx, foody = generate_food(dis_width, dis_height, map, block)
 
     end = (foodx, foody)
 
@@ -182,29 +184,27 @@ def gameLoop():
             x1 += x1_change
             y1 += y1_change
 
-            dis.fill(blue)
-            pygame.draw.rect(dis, green, [foodx, foody, block, block])
-            snake_Head = []
-            snake_Head.append(x1)
-            snake_Head.append(y1)
-            snake_List.append(snake_Head)
-            if len(snake_List) > Length_of_snake:
-                del snake_List[0]
+            dis.fill(blue)  # Refresh the screen
+            pygame.draw.rect(dis, green, [foodx, foody, block, block])  # Draw the destination/end point
+            pygame.draw.rect(dis, gray, [x1, y1, block, block])  # Drawing the next square path from A* algorithm
 
-            our_block(block, snake_List)
-            theta = theta + math.pi/6
-            unicycle(x1, y1, theta, L, R)
-            print('x1: ', x1, 'y1: ', y1)
+            # (x_dest, y_dest) = (x1 + 5, y1 + 5)
+
+            # unicycle(x1, y1, theta)
+            z = unicycle(xp, yp, theta)  # Draw unicycle triangle
+            print('z0: ', x1, y1, ' theta: ', theta)  # Print unicycle z_point and theta
             draw_map(map, block)
+
             pygame.time.Clock().tick(1)
             pygame.display.update()
 
         # When it finds the end of path
         start = end
         if x1 == foodx and y1 == foody:
-            foodx, foody = generate_food(dis_width, dis_height, map, block, snake_List)
+            foodx, foody = generate_food(dis_width, dis_height, map, block)
             end = (foodx, foody)
-        # game_over=True
+        # if
+        #    game_over=True
 
 
 gameLoop()
