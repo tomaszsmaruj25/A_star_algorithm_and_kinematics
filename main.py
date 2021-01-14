@@ -23,6 +23,7 @@ pygame.display.set_caption('A* Algorithm + kinematics')
 block = 10  # dimension of the A* square path
 L = 15  # vehicle dimension - between the wheels
 R = 20  # vehicle dimension - radian of the wheels
+
 game_over = False  # end simulation condition
 
 
@@ -52,12 +53,12 @@ def empty_map(width=60, height=40):
             row.append(0)
         grid.append(row)
     # example of an obstacle
-    for i in range(10, 20):
-        grid[i][12] = 100
-        grid[i][22] = 100
-        grid[i][32] = 100
-        grid[i][42] = 100
-        grid[i][52] = 100
+    for i in range(10, 30):
+        grid[i][10] = 100
+        grid[i][20] = 100
+        #grid[i][30] = 100
+        grid[i][40] = 100
+        grid[i][50] = 100
     return grid
 
 
@@ -157,45 +158,71 @@ def find_path_a_star(start, end):
 def gameLoop():
     global game_over
 
-    # starting position of the robot
+    # robot configuration variables
     xp = 305
     yp = 205
     theta = 90
 
-    # position of the first square  a* algorithm
-    # x1 = dis_width / 2
-    # y1 = dis_height / 2
-    x1 = xp - 5
-    y1 = yp - 5
+    # calculate position of the z point
+    xz = int(xp - math.cos(math.radians(theta)) * R)
+    yz = int(yp + math.sin(math.radians(theta)) * R)
+
+    # position of the first square a* algorithm
+    x1 = int(xz - (xz % block))  # round to 10 the result
+    y1 = int(yz - (yz % block))
 
     # position of the end point
     start = (x1, y1)
     foodx, foody = generate_food(dis_width, dis_height, map, block)
-
     end = (foodx, foody)
 
     while not game_over:
 
-        path = find_path_a_star(start, end)
+        path = find_path_a_star(start, end)  # init A* algorithm for the new points
+        print(path)
+        step = 0
 
-        for i in path:
-            x1_change = i[0] - x1
-            y1_change = i[1] - y1
-            x1 += x1_change
-            y1 += y1_change
+        while step < len(path):
+            # change the a* path when vehicle is in the destined square
+            if x1 <= xz < (x1 + block) and y1 <= yz < (y1 + block):
+                x1_change = path[step][0] - x1
+                y1_change = path[step][1] - y1
+                x1 += x1_change
+                y1 += y1_change
+                step = step + 1 # !!! add condition where step = len(path)
 
             dis.fill(blue)  # Refresh the screen
             pygame.draw.rect(dis, green, [foodx, foody, block, block])  # Draw the destination/end point
             pygame.draw.rect(dis, gray, [x1, y1, block, block])  # Drawing the next square path from A* algorithm
 
-            # (x_dest, y_dest) = (x1 + 5, y1 + 5)
+            # destined next block (x,y) from A*
+            (x_dest, y_dest) = (x1 + int(block/2), y1 + int(block/2))
+
+            # difference between the points
+            (x_diff, y_diff) = (x_dest - xp, y_dest - yp)
+            # calculate theta of the robot, 180 because of mirror view
+            theta = math.degrees(math.atan2(y_diff, -x_diff))
+
+            math.
+            # move towards the destined point
+            if x_diff > 0:
+                xp = xp + 1
+            if x_diff < 0:
+                xp = xp - 1
+            if y_diff > 0:
+                yp = yp + 1
+            if y_diff < 0:
+                yp = yp - 1
 
             # unicycle(x1, y1, theta)
-            z = unicycle(xp, yp, theta)  # Draw unicycle triangle
-            print('z0: ', x1, y1, ' theta: ', theta)  # Print unicycle z_point and theta
+            xz, yz = unicycle(xp, yp, theta)  # Draw unicycle triangle and return z_point of vehicle
+            print('z_point (x,y): ', xz, yz, ' theta:         ', theta)  # Print unicycle z_point and theta
+            # print('x_dest, y_dest: ', x_dest, y_dest)
+            print('diff: ', x_diff, y_diff)
             draw_map(map, block)
 
-            pygame.time.Clock().tick(1)
+            # set frequency of the simulation loop
+            pygame.time.Clock().tick(10)
             pygame.display.update()
 
         # When it finds the end of path
@@ -203,8 +230,19 @@ def gameLoop():
         if x1 == foodx and y1 == foody:
             foodx, foody = generate_food(dis_width, dis_height, map, block)
             end = (foodx, foody)
-        # if
-        #    game_over=True
+
+        # End simulation when ESC pressed
+        # pygame.event.get()
+        # keys = pygame.key.get_pressed()
+        # if keys[pygame.K_ESCAPE]:
+        #     print("ESC został wcisniety")
+        #     game_over = True
 
 
 gameLoop()
+
+# ----- variables dictionary ------
+# xp, yp - characteristics robot point
+# xz, yz - top of the robot
+# x1, y1 - coords of next square of the A* algorithm (left top corner)
+# x_dest, y_dest - coords of next square of the A* algorithm (middle of the square)
