@@ -3,6 +3,7 @@ import random
 import heapq as pq
 import heapq
 import math
+import numpy as np
 
 pygame.init()
 
@@ -14,51 +15,64 @@ red = (213, 50, 80)
 green = (0, 255, 0)
 blue = (50, 153, 213)
 
+# Define window dimension
 dis_width = 600
 dis_height = 400
-
 dis = pygame.display.set_mode((dis_width, dis_height))
 pygame.display.set_caption('A* Algorithm + kinematics')
 
+# Define dimensions in window
 block = 10  # dimension of the A* square path
 L = 15  # vehicle dimension - between the wheels
-R = 20  # vehicle dimension - radian of the wheels
+d = R = 20  # vehicle dimension - radian of the wheels
 
 game_over = False  # end simulation condition
-
-
-# # Initializing empty map
-# def empty_map(width=60, height=40):
-#     grid = []
-#     for r in range(height):
-#         row = []
-#         for c in range(width):
-#             row.append(0)
-#         grid.append(row)
-#     return grid
 
 
 # Initializing map with obstacles
 def empty_map(width=60, height=40):
     grid = []
+    obst1 = [14, 14, 6]
+    obst2 = [20, 30, 5]
+    obst3 = [45, 15, 7]
+
     for r in range(height):
         row = []
         for c in range(width):
-            if (c == 0) or (c == width - 1):  # the first and the last column is an obstacle
+            # Frames around the windows as obstacle
+            if (c == 0) or (c == width - 1) or (r == 0) or (r == height - 1):  # the first and the last column obstacle
                 row.append(100)
                 continue
-            if (r == 0) or (r == height - 1):  # the first and the last row is an obstacle
+            if (c < int(R / 10) + 1) or (c > width - int(R / 10) - 2) or (r < int(R / 10) + 1) or (
+                    r > height - int(R / 10) - 2):
+                row.append(50)
+                continue
+            # Draw first obstacle and frame around
+            if obst1[0] - obst1[2] < c < obst1[0] + obst1[2] and obst1[1] - obst1[2] < r < obst1[1] + obst1[2]:
                 row.append(100)
+                continue
+            if obst1[0] - obst1[2] - int(R / 10) < c < obst1[0] + obst1[2] + int(R / 10) and \
+                    obst1[1] - obst1[2] - int(R / 10) < r < obst1[1] + obst1[2] + int(R / 10):
+                row.append(50)
+                continue
+            # Draw second obstacle and frame around
+            if obst2[0] - obst2[2] < c < obst2[0] + obst2[2] and obst2[1] - obst2[2] < r < obst2[1] + obst2[2]:
+                row.append(100)
+                continue
+            if obst2[0] - obst2[2] - int(R / 10) < c < obst2[0] + obst2[2] + int(R / 10) and \
+                    obst2[1] - obst2[2] - int(R / 10) < r < obst2[1] + obst2[2] + int(R / 10):
+                row.append(50)
+                continue
+            # Draw second obstacle and frame around
+            if obst3[0] - obst3[2] < c < obst3[0] + obst3[2] and obst3[1] - obst3[2] < r < obst3[1] + obst3[2]:
+                row.append(100)
+                continue
+            if obst3[0] - obst3[2] - int(R / 10) < c < obst3[0] + obst3[2] + int(R / 10) and \
+                    obst3[1] - obst3[2] - int(R / 10) < r < obst3[1] + obst3[2] + int(R / 10):
+                row.append(50)
                 continue
             row.append(0)
         grid.append(row)
-    # example of an obstacle
-    for i in range(10, 30):
-        grid[i][10] = 100
-        grid[i][20] = 100
-        #grid[i][30] = 100
-        grid[i][40] = 100
-        grid[i][50] = 100
     return grid
 
 
@@ -69,8 +83,10 @@ map = empty_map()
 def draw_map(map, block):
     for idxR, row in enumerate(map):
         for idxC, col in enumerate(row):
-            if col == 100:  # When there is an obstacle, draw a rectangle
+            if col == 100:  # When there is an obstacle, draw a black rectangle
                 pygame.draw.rect(dis, black, [idxC * block, idxR * block, block, block])
+            if col == 50:  # When there is a frame, draw a gray rectangle
+                pygame.draw.rect(dis, gray, [idxC * block, idxR * block, block, block])
 
 
 def generate_food(width, height, map, snake_block):
@@ -89,17 +105,16 @@ def unicycle(x, y, theta):
     left_wheel = (int(x - 0.5 * L * math.sin(theta_rad)), int(y - 0.5 * L * math.cos(theta_rad)))
     right_wheel = (int(x + 0.5 * L * math.sin(theta_rad)), int(y + 0.5 * L * math.cos(theta_rad)))
     z_point = (int(x - math.cos(theta_rad) * R), int(y + math.sin(theta_rad) * R))
+    # print('left_wheel', left_wheel)
+    # print('z_point', z_point)
+    # print('right_wheel', right_wheel)
     # draw the vehicle
     pygame.draw.polygon(dis, red, (z_point, left_wheel, right_wheel), width=0)
-    return z_point
 
 
 def heuristics(st, end):
-    # (x0, y0) -> start
-    # (x1, y1) -> end
-    # ((x1 - x0) ^2 + (y1-y0)^2) ^0.5
     # distance = abs(st[0] - end[0]) + abs(st[1] - end[1])  # Manhattan
-    distance = ((st[0] - end[0]) ** 2 + (st[1] - end[1]) ** 2) ** (0.5)  # Euclidean
+    distance = ((st[0] - end[0]) ** 2 + (st[1] - end[1]) ** 2) ** 0.5  # Euclidean
     return distance
 
 
@@ -108,26 +123,22 @@ def find_path_a_star(start, end):
     current = []
     gscore = {start: 0}
     fscore = {start: heuristics(start, end)}
-
     oheap = []
     heapq.heappush(oheap, (fscore[start], start))
 
     while oheap:
-
         current = heapq.heappop(oheap)[1]
         if current == end:
             break
-        if map[int(current[1] / block)][int(current[0] / block)] != 100:
+        if map[int(current[1] / block)][int(current[0] / block)] < 50:
             neighbours = []
-
             for new in [(0, -block), (0, block), (-block, 0), (block, 0),
                         (block, block), (block, -block), (-block, -block), (-block, block)]:
                 position = (current[0] + new[0], current[1] + new[1])
-
                 if int(position[1] / block) >= 40 or int(position[0] / block) >= 60:
                     continue
                 else:
-                    if map[int(position[1] / block)][int(position[0] / block)] != 100:
+                    if map[int(position[1] / block)][int(position[0] / block)] < 50:
                         neighbours.append(position)
 
             for neigh in neighbours:
@@ -155,17 +166,34 @@ def find_path_a_star(start, end):
     return path
 
 
+def calculate_coords(x, y):
+    xi = int(x)
+    yi = int(y)
+    return xi, yi
+
+
 def gameLoop():
     global game_over
+
+    # --------------- INITIAL VALUES --------------
+    Ts = 0.1  # Seconds
+    freq = int(1 / Ts)  # Hz
 
     # robot configuration variables
     xp = 305
     yp = 205
-    theta = 90
+    theta_deg = 90
+    theta = math.radians(theta_deg)
+    q = np.array([[xp],
+                  [yp],
+                  [theta]])
 
     # calculate position of the z point
-    xz = int(xp - math.cos(math.radians(theta)) * R)
-    yz = int(yp + math.sin(math.radians(theta)) * R)
+    xz = xp - d * math.cos(theta)
+    yz = yp + d * math.sin(theta)
+
+    # velocity of the robot
+    V = 25
 
     # position of the first square a* algorithm
     x1 = int(xz - (xz % block))  # round to 10 the result
@@ -181,6 +209,7 @@ def gameLoop():
         path = find_path_a_star(start, end)  # init A* algorithm for the new points
         print(path)
         step = 0
+        # dis.fill(blue)  # Refresh the screen
 
         while step < len(path):
             # change the a* path when vehicle is in the destined square
@@ -189,40 +218,54 @@ def gameLoop():
                 y1_change = path[step][1] - y1
                 x1 += x1_change
                 y1 += y1_change
-                step = step + 1 # !!! add condition where step = len(path)
+                step = step + 1  # !!! add condition where step = len(path)
 
             dis.fill(blue)  # Refresh the screen
             pygame.draw.rect(dis, green, [foodx, foody, block, block])  # Draw the destination/end point
-            pygame.draw.rect(dis, gray, [x1, y1, block, block])  # Drawing the next square path from A* algorithm
+            pygame.draw.rect(dis, yellow, [x1, y1, block, block])  # Drawing the next square path from A* algorithm
 
-            # destined next block (x,y) from A*
-            (x_dest, y_dest) = (x1 + int(block/2), y1 + int(block/2))
+            # ---------- Start algorithm -----------
+            # Calculate position of the z point
+            xz = xp - d * math.cos(theta)
+            yz = yp + d * math.sin(theta)
 
-            # difference between the points
-            (x_diff, y_diff) = (x_dest - xp, y_dest - yp)
-            # calculate theta of the robot, 180 because of mirror view
-            theta = math.degrees(math.atan2(y_diff, -x_diff))
+            # Planner - calculate theta and z_dot
+            (x_dest, y_dest) = (x1 + int(block / 2), y1 + int(block / 2))  # Destined next block (x,y) from A* (center)
+            (x_diff, y_diff) = (x_dest - xz, y_dest - yz)  # Difference between the points
+            theta = math.atan2(y_diff, -x_diff)  # Calculate theta of the robot, 180 because of mirror view
+            z_dot = np.array([[math.cos(theta)], [-math.sin(theta)]]) * V  # Velocity of the robot z point
+            print('z_dot: ', z_dot)
 
-            math.
-            # move towards the destined point
-            if x_diff > 0:
-                xp = xp + 1
-            if x_diff < 0:
-                xp = xp - 1
-            if y_diff > 0:
-                yp = yp + 1
-            if y_diff < 0:
-                yp = yp - 1
+            # Linearization method - calculate velocities Vx and omega
+            P = np.array([[math.cos(theta), -d * math.sin(theta)],
+                          [math.sin(theta), d * math.cos(theta)]])
+            inv_P = np.linalg.inv(P)
+            (Vx, omega) = np.dot(inv_P, z_dot)
+            print('(Vx, omega): ', (Vx, omega))
 
-            # unicycle(x1, y1, theta)
-            xz, yz = unicycle(xp, yp, theta)  # Draw unicycle triangle and return z_point of vehicle
-            print('z_point (x,y): ', xz, yz, ' theta:         ', theta)  # Print unicycle z_point and theta
+            # Calculate position change - configuration coordinates q
+            q1 = np.array([[-math.cos(theta)],
+                           [math.sin(theta)],
+                           [0]])
+            q2 = np.array([[0],
+                           [0],
+                           [1]])
+            q = q + (q1 * V + q2 * omega) * Ts  # calculate new robot coords
+            (xp, yp, theta) = q  # new coords of the robot
+            theta_deg = math.degrees(theta)  # convert theta to display degrees
+
+            print('z_point (x,y): ', xz, yz, ' theta:', theta_deg)  # Print unicycle z_point and theta
             # print('x_dest, y_dest: ', x_dest, y_dest)
-            print('diff: ', x_diff, y_diff)
+            # print('diff: ', x_diff, y_diff)
+
+            # Draw obstacles
             draw_map(map, block)
 
-            # set frequency of the simulation loop
-            pygame.time.Clock().tick(10)
+            # Draw unicycle triangle
+            unicycle(xp, yp, theta_deg)
+
+            # Set frequency of the simulation loop
+            pygame.time.Clock().tick(freq)
             pygame.display.update()
 
         # When it finds the end of path
@@ -243,6 +286,6 @@ gameLoop()
 
 # ----- variables dictionary ------
 # xp, yp - characteristics robot point
-# xz, yz - top of the robot
+# xz, yz - top of the robot (z point)
 # x1, y1 - coords of next square of the A* algorithm (left top corner)
 # x_dest, y_dest - coords of next square of the A* algorithm (middle of the square)
